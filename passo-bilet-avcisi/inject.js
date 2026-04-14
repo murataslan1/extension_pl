@@ -10,7 +10,12 @@
     return hits;
   }
 
+  function absolutize(u) {
+    try { return new URL(u, location.href).href; } catch (_) { return u; }
+  }
+
   function report(req) {
+    req.url = absolutize(req.url);
     const key = req.method + " " + req.url;
     if (seen.has(key)) return;
     seen.add(key);

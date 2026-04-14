@@ -23,10 +23,13 @@ function normalize(str) {
 async function checkViaBackgroundApi(req, category, price) {
   if (!req || !req.url) return { ok: false, error: "no captured request" };
   try {
+    let url = req.url;
+    if (url.startsWith("//")) url = "https:" + url;
+    else if (url.startsWith("/")) url = "https://www.passo.com.tr" + url;
     const headers = { ...(req.headers || {}) };
     delete headers["content-length"];
     delete headers["Content-Length"];
-    const r = await fetch(req.url, {
+    const r = await fetch(url, {
       method: req.method || "GET",
       headers,
       body: (req.method && req.method !== "GET" && req.method !== "HEAD") ? req.body : undefined,
