@@ -63,6 +63,23 @@ function extractEventId(url) {
   return m ? m[1] : null;
 }
 
+function waitForTabLoad(tabId, timeoutMs = 25000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error("tab reload timeout"));
+    }, timeoutMs);
+    const listener = (updatedId, info) => {
+      if (updatedId === tabId && info.status === "complete") {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
 async function pollNow() {
   const s = await getSettings();
   if (!s.watching) return;
@@ -76,6 +93,9 @@ async function pollNow() {
     return;
   }
   try {
+    await chrome.tabs.reload(tab.id, { bypassCache: true });
+    await waitForTabLoad(tab.id);
+    await new Promise(r => setTimeout(r, 2500));
     const resp = await chrome.tabs.sendMessage(tab.id, {
       type: "CHECK_AVAILABILITY",
       category: s.category,
@@ -112,20 +132,45 @@ async function pollNow() {
 
 async function triggerAlert(settings, tab) {
   try {
-    await chrome.notifications.create("passo-found-" + Date.now(), {
-      type: "basic",
-      iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Z0qXf8AAAAASUVORK5CYII=",
-      title: "BİLET VAR! 🎟️",
-      message: `${settings.category} ${settings.price} — hemen siteye gir!`,
-      priority: 2,
-      requireInteraction: true
-    });
-  } catch (e) { console.error("notif err", e); }
+    await chrome.action.setBadgeText({ text: "VAR!" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#c1121f" });
+  } catch (_) {}
+
+  for (let i = 0; i < 5; i++) {
+    try {
+      await chrome.notifications.create("passo-found-" + Date.now() + "-" + i, {
+        type: "basic",
+        iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Z0qXf8AAAAASUVORK5CYII=",
+        title: "🎟️ BİLET VAR! HEMEN GİR!",
+        message: `${settings.category} ${settings.price} — koltuk açıldı, ödemeyi yap!`,
+        priority: 2,
+        requireInteraction: true
+      });
+    } catch (e) { console.error("notif err", e); }
+    await new Promise(r => setTimeout(r, 3000));
+  }
 
   try {
     await chrome.tabs.update(tab.id, { active: true });
-    if (tab.windowId) await chrome.windows.update(tab.windowId, { focused: true });
+    if (tab.windowId) {
+      await chrome.windows.update(tab.windowId, { focused: true, drawAttention: true });
+    }
   } catch (e) { console.error("focus err", e); }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const origTitle = document.title;
+        let on = true;
+        const iv = setInterval(() => {
+          document.title = on ? "🚨 BİLET VAR 🚨" : "🎟️ HEMEN GİR 🎟️";
+          on = !on;
+        }, 500);
+        setTimeout(() => { clearInterval(iv); document.title = origTitle; }, 60000);
+      }
+    });
+  } catch (e) { console.error("title flash err", e); }
 
   await ensureOffscreen();
   try {

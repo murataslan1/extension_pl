@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.passo.com.tr)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('/Users/murat/Desktop/passolig/passo-bilet-avcisi/manifest.json','utf8'\\)\\); console.log\\('manifest valid'\\)\")",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(git init:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"Passo Bilet Avcısı v0.1 Chrome extension\")",
+      "Bash(git remote:*)",
+      "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.1.0.zip passo-bilet-avcisi)",
+      "Bash(gh release create v0.1.0 /tmp/passo-bilet-avcisi-v0.1.0.zip --repo murataslan1/extension_pl --title 'v0.1.0 — İzleme + Alarm' --notes ':*)",
+      "Bash(python3 -c \"import playwright; print\\(playwright.__version__\\)\")",
+      "Bash(python3 -m pip install --quiet --user playwright)",
+      "Bash(python3 -m playwright install --with-deps chromium)",
+      "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.1.1.zip passo-bilet-avcisi)",
+      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.1.1: tab reload her poll'da + çok katmanlı alarm \\(bildirim x5, title flash, badge, window flash, ses resume\\)\")",
+      "Bash(git push:*)",
+      "Bash(gh release create v0.1.1 /tmp/passo-bilet-avcisi-v0.1.1.zip --repo murataslan1/extension_pl --title 'v0.1.1 — Refresh fix + çok katmanlı alarm' --notes ':*)"
+    ]
+  }
+}
