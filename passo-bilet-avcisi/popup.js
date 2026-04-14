@@ -17,7 +17,9 @@ function renderStatus(s) {
   else if (statusLine.startsWith("no-stock")) { cls = "warn"; }
   else if (statusLine === "error" || statusLine === "no-tab") { cls = "err"; }
   const err = s.lastError ? `<br><span class="err">⚠ ${s.lastError}</span>` : "";
-  const endpoint = s.seatEndpoint ? `<br><span class="ok">API: ${s.seatEndpoint.slice(0, 50)}…</span>` : "";
+  const endpoint = (s.capturedRequest && s.capturedRequest.url)
+    ? `<br><span class="ok">API yakalandı: ${s.capturedRequest.method} ${s.capturedRequest.url.slice(0, 45)}…</span>`
+    : `<br><span class="warn">API henüz yakalanmadı — maç sayfasını bir kere ziyaret edin</span>`;
   $("status").innerHTML = `
     <b>${watching}</b><br>
     Son kontrol: ${last}<br>

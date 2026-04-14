@@ -19,8 +19,8 @@
     if (ev.source !== window) return;
     const d = ev.data;
     if (!d || d.__passo !== true) return;
-    if (d.type === "ENDPOINT_FOUND" && d.url) {
-      chrome.runtime.sendMessage({ type: "ENDPOINT_FOUND", url: d.url }).catch(() => {});
+    if (d.type === "ENDPOINT_FOUND" && d.req && d.req.url) {
+      chrome.runtime.sendMessage({ type: "ENDPOINT_FOUND", req: d.req }).catch(() => {});
     }
   });
 

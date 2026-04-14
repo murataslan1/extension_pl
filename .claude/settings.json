@@ -18,7 +18,11 @@
       "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.1.1.zip passo-bilet-avcisi)",
       "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.1.1: tab reload her poll'da + çok katmanlı alarm \\(bildirim x5, title flash, badge, window flash, ses resume\\)\")",
       "Bash(git push:*)",
-      "Bash(gh release create v0.1.1 /tmp/passo-bilet-avcisi-v0.1.1.zip --repo murataslan1/extension_pl --title 'v0.1.1 — Refresh fix + çok katmanlı alarm' --notes ':*)"
+      "Bash(gh release create v0.1.1 /tmp/passo-bilet-avcisi-v0.1.1.zip --repo murataslan1/extension_pl --title 'v0.1.1 — Refresh fix + çok katmanlı alarm' --notes ':*)",
+      "Bash(node -e ':*)",
+      "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.1.2.zip passo-bilet-avcisi)",
+      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.1.2: reload yok, captured request'i background'dan replay — logout fix\")",
+      "Bash(gh release create v0.1.2 /tmp/passo-bilet-avcisi-v0.1.2.zip --repo murataslan1/extension_pl --title 'v0.1.2 — Logout fix, sessiz API replay' --notes ':*)"
     ]
   }
 }

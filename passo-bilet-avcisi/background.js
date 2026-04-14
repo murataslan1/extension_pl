@@ -10,8 +10,49 @@ const DEFAULT_SETTINGS = {
   lastCheck: null,
   lastStatus: "idle",
   lastError: null,
-  seatEndpoint: null
+  capturedRequest: null
 };
+
+function normalize(str) {
+  return (str || "").toString().toLowerCase()
+    .replaceAll("i̇", "i").replaceAll("ı", "i")
+    .replaceAll("ş", "s").replaceAll("ğ", "g")
+    .replaceAll("ü", "u").replaceAll("ö", "o").replaceAll("ç", "c");
+}
+
+async function checkViaBackgroundApi(req, category, price) {
+  if (!req || !req.url) return { ok: false, error: "no captured request" };
+  try {
+    const headers = { ...(req.headers || {}) };
+    delete headers["content-length"];
+    delete headers["Content-Length"];
+    const r = await fetch(req.url, {
+      method: req.method || "GET",
+      headers,
+      body: (req.method && req.method !== "GET" && req.method !== "HEAD") ? req.body : undefined,
+      credentials: "include",
+      cache: "no-store"
+    });
+    if (!r.ok) return { ok: false, error: "api http " + r.status };
+    const text = await r.text();
+    const n = normalize(text);
+    const catN = normalize(category);
+    if (!n.includes(catN)) return { ok: false, error: "api: kategori yok" };
+    const priceN = normalize(price).replace(/[.,]/g, "");
+    const idx = n.indexOf(catN);
+    const win = n.slice(Math.max(0, idx - 400), idx + 600);
+    if (!win.includes(priceN)) return { ok: false, error: "api: fiyat eşleşmedi" };
+    const mPos = win.match(/"(availableseatcount|available|stock|remaining|count|seatcount)"\s*:\s*([1-9]\d*)/);
+    if (mPos) return { ok: true, available: true, mode: "api" };
+    const mZero = win.match(/"(availableseatcount|available|stock|remaining|count|seatcount)"\s*:\s*0\b/);
+    if (mZero) return { ok: true, available: false, mode: "api" };
+    const markers = ["no tickets available", "bilet bulunmamaktadir", "sold out", "tukendi"];
+    for (const m of markers) if (win.includes(m)) return { ok: true, available: false, mode: "api" };
+    return { ok: true, available: true, mode: "api-guess" };
+  } catch (e) {
+    return { ok: false, error: "api ex: " + (e.message || e) };
+  }
+}
 
 async function getSettings() {
   const s = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -63,39 +104,38 @@ function extractEventId(url) {
   return m ? m[1] : null;
 }
 
-function waitForTabLoad(tabId, timeoutMs = 25000) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error("tab reload timeout"));
-    }, timeoutMs);
-    const listener = (updatedId, info) => {
-      if (updatedId === tabId && info.status === "complete") {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
-    };
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-}
-
 async function pollNow() {
   const s = await getSettings();
   if (!s.watching) return;
+  const now = Date.now();
+
+  if (s.capturedRequest && s.capturedRequest.url) {
+    const r = await checkViaBackgroundApi(s.capturedRequest, s.category, s.price);
+    if (r.ok) {
+      if (r.available) {
+        await setSettings({ lastCheck: now, lastStatus: "AVAILABLE", lastError: null });
+        const tab = await findPassoTab(s.eventUrl);
+        await triggerAlert(s, tab || {});
+        await stopWatching();
+        return;
+      } else {
+        await setSettings({ lastCheck: now, lastStatus: "no-stock (api)", lastError: null });
+        return;
+      }
+    }
+    await setSettings({ lastCheck: now, lastStatus: "api-error", lastError: r.error });
+  }
+
   const tab = await findPassoTab(s.eventUrl);
   if (!tab) {
     await setSettings({
-      lastCheck: Date.now(),
+      lastCheck: now,
       lastStatus: "no-tab",
-      lastError: "Passo maç tabı açık değil. Lütfen maç sayfasını açın."
+      lastError: "Passo maç tabı açık değil + API henüz keşfedilmedi. Maç sayfasını bir kere açıp MISAFIR satırını görünce otomatik yakalanır."
     });
     return;
   }
   try {
-    await chrome.tabs.reload(tab.id, { bypassCache: true });
-    await waitForTabLoad(tab.id);
-    await new Promise(r => setTimeout(r, 2500));
     const resp = await chrome.tabs.sendMessage(tab.id, {
       type: "CHECK_AVAILABILITY",
       category: s.category,
@@ -213,7 +253,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
     }
     else if (msg.type === "ENDPOINT_FOUND") {
-      await setSettings({ seatEndpoint: msg.url });
+      if (msg.req && msg.req.url) {
+        await setSettings({ capturedRequest: msg.req });
+      }
       sendResponse({ ok: true });
     }
     else if (msg.type === "POLL_NOW") {
