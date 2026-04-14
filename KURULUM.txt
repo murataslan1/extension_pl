@@ -1,0 +1,77 @@
+PASSO BİLET AVCISI — KURULUM (Windows + Mac)
+=============================================
+
+NE İŞE YARAR
+------------
+Passo'da istediğiniz kategoride yer açıldığında 30 saniye içinde
+sesli alarm + masaüstü bildirimi verir. Tab'ı öne getirir, siz
+hemen siteye girip ödemeyi tamamlarsınız. v0.1'de otomatik satın
+alma yoktur — sadece uyarır (v0.2'de gelecek).
+
+KURULUM (Chrome / Edge / Brave — hem Windows hem Mac aynı adımlar)
+------------------------------------------------------------------
+1) "passo-bilet-avcisi" klasörünün bilgisayarınızda olduğundan emin olun.
+   (Windows'a gönderdiyseniz örn. C:\passo-bilet-avcisi\ altına koyun.)
+
+2) Chrome'u açın. Adres çubuğuna yazın:
+       chrome://extensions
+   (Edge için: edge://extensions , Brave için: brave://extensions)
+
+3) Sağ üstte "Developer mode" / "Geliştirici modu" anahtarını AÇIN.
+
+4) Sol üstte "Load unpacked" / "Paketlenmemiş öğe yükle" butonuna basın.
+
+5) "passo-bilet-avcisi" klasörünü seçin. Extension yüklenir ve
+   araç çubuğunda 🧩 ikonunda görünür. Ona sağ tıklayıp
+   "Pin / Sabitle" derseniz her zaman görünür olur.
+
+6) Chrome'da passo.com.tr'ye gidin ve Passo hesabınıza LOGIN olun.
+
+7) Maç sayfasını yeni bir tab'da açın:
+   https://www.passo.com.tr/en/event/genclerbirligi-galatasarayas-mac-bilet-passo/11410319/seats
+
+8) Araç çubuğundaki 🎟️ ikonuna tıklayın → popup açılır.
+   Alanlar otomatik dolu olmalı:
+     Kategori: MISAFIR
+     Fiyat: 5.200
+   Değilse düzeltin.
+
+9) "İzlemeyi Başlat" butonuna basın. Durum "🟢 İZLENİYOR" olur.
+
+10) MAÇ TABINI AÇIK BIRAKIN ve Chrome'u kapatmayın.
+
+11) Bilgisayar uyumasın:
+    - Windows: Ayarlar → Sistem → Güç → Ekran ve uyku → "Asla"
+    - Mac: Sistem Ayarları → Pil/Güç → "Bilgisayarı uyku moduna alma"
+
+YER AÇILDIĞINDA NE OLUR
+-----------------------
+- Masaüstü bildirimi: "BİLET VAR! MISAFIR 5.200"
+- 25 saniye boyunca yüksek sesli bip-bip alarmı
+- Passo maç tabı öne gelir
+- Siz hemen tab'a bakın → MISAFIR satırına tıklayın →
+  koltuk seçin → sepete ekle → ödemeyi yapın.
+
+TEST
+----
+Popup'taki butonlar:
+  🔊 Alarmı Test Et  → sesi doğrudan çalar (ses çıkıyor mu görün)
+  🔔 Bildirim        → test bildirimi gönderir (OS bildirim gösteriyor mu)
+  ⟳ Şimdi Kontrol Et → bir kere anında kontrol yapar
+
+SORUN GİDERME
+-------------
+- "no-tab" hatası → Passo maç tabı kapalı. Açın.
+- "dom: kategori satırı bulunamadı" → yanlış sayfadasınız ya da
+  Passo arayüzü değişmiş. Maç sayfasının açık olduğunu doğrulayın.
+- Ses gelmiyor → Chrome sekmesi sessiz olabilir, popup'tan "Alarmı
+  Test Et" ile deneyin. Windows'ta ses karıştırıcıda Chrome'un
+  kısık olmadığına bakın.
+- Bildirim gelmiyor → Windows: Ayarlar → Sistem → Bildirimler →
+  Chrome için açık olduğundan emin olun.
+
+GÜVENLİK NOTU
+-------------
+Extension kart, CVV, şifre görmez ve saklamaz. Sadece Passo sayfasını
+okur ve yer açıldığında sizi uyarır. Ödeme adımını her zaman SİZ
+yaparsınız. Sadece passo.com.tr alanında çalışır.

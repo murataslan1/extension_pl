@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Passo Bilet Avcısı",
+  "version": "0.1.0",
+  "description": "Passo maç sayfasındaki bir kategoride yer açıldığında anında uyarı verir.",
+  "permissions": ["alarms", "notifications", "storage", "scripting", "tabs", "offscreen"],
+  "host_permissions": ["https://*.passo.com.tr/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.passo.com.tr/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Passo Bilet Avcısı"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js"],
+      "matches": ["https://*.passo.com.tr/*"]
+    }
+  ]
+}
