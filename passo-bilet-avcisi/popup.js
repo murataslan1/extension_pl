@@ -31,6 +31,18 @@ function renderStatus(s) {
   const endpoint = (s.capturedRequest && s.capturedRequest.url)
     ? `<br><span class="ok">API yakalandı: ${s.capturedRequest.method} ${s.capturedRequest.url.slice(0, 45)}…</span>`
     : `<br><span class="warn">API henüz yakalanmadı — maç sayfasını bir kere ziyaret edin</span>`;
+
+  let logoutBanner = "";
+  if (s.loggedOut) {
+    logoutBanner = `<div style="background:#c1121f;color:#fff;padding:8px;margin:6px 0;border-radius:4px;text-align:center;font-weight:bold">🚨 LOGOUT! Passo'ya yeniden login ol + "İzlemeyi Başlat" bas</div>`;
+  }
+  const hb = s.lastHeartbeat
+    ? `<br>💓 heartbeat: ${new Date(s.lastHeartbeat).toLocaleTimeString()} · ${s.heartbeatStatus || "—"}`
+    : `<br>💓 heartbeat: henüz yok`;
+  const authStatus = [];
+  if (s.userRequest && s.userRequest.url) authStatus.push("👤 user endpoint yakalandı");
+  if (s.tokenRequest && s.tokenRequest.url) authStatus.push("🔑 token endpoint yakalandı");
+  const authLine = authStatus.length ? `<br>${authStatus.join(" · ")}` : "";
   let autoBuyBlock = "";
   if (s.autoBuyState && s.autoBuyState !== "IDLE") {
     const stColor = s.autoBuyState === "ERROR" ? "err" : (s.autoBuyState === "AT_PAYMENT" ? "ok" : "warn");
@@ -41,11 +53,14 @@ function renderStatus(s) {
   }
 
   $("status").innerHTML = `
+    ${logoutBanner}
     <b>${watching}</b>${counterLine}<br>
     Son kontrol: ${last}<br>
     Durum: <span class="${cls}">${statusLine}</span>
     ${err}
     ${endpoint}
+    ${hb}
+    ${authLine}
     ${autoBuyBlock}
   `;
 }

@@ -1,5 +1,7 @@
 const ALARM_NAME = "passo-poll";
+const HEARTBEAT_ALARM = "passo-heartbeat";
 const POLL_MINUTES = 0.5;
+const HEARTBEAT_MINUTES = 1.5;
 const DEFAULT_SETTINGS = {
   watching: false,
   eventUrl: "https://www.passo.com.tr/en/event/genclerbirligi-galatasarayas-mac-bilet-passo/11410319/seats",
@@ -16,7 +18,12 @@ const DEFAULT_SETTINGS = {
   autoBuy: false,
   autoBuyQuantity: 2,
   autoBuyState: "IDLE",
-  autoBuyLog: ""
+  autoBuyLog: "",
+  userRequest: null,
+  tokenRequest: null,
+  loggedOut: false,
+  lastHeartbeat: null,
+  heartbeatStatus: "—"
 };
 
 function normalize(str) {
@@ -40,10 +47,20 @@ async function checkViaBackgroundApi(req, category, price) {
       headers,
       body: (req.method && req.method !== "GET" && req.method !== "HEAD") ? req.body : undefined,
       credentials: "include",
-      cache: "no-store"
+      cache: "no-store",
+      redirect: "follow"
     });
+    if (r.status === 401 || r.status === 403) {
+      return { ok: false, loggedOut: true, error: "api http " + r.status + " (logout)" };
+    }
+    if (r.url && /login|signin|uye-girisi|giris/i.test(r.url)) {
+      return { ok: false, loggedOut: true, error: "api redirect → login: " + r.url };
+    }
     if (!r.ok) return { ok: false, error: "api http " + r.status };
     const text = await r.text();
+    if (/<title[^>]*>[^<]*(üye girişi|uye girisi|login|sign in)/i.test(text.slice(0, 2000))) {
+      return { ok: false, loggedOut: true, error: "api html login page" };
+    }
     const n = normalize(text);
     const catN = normalize(category);
     if (!n.includes(catN)) return { ok: false, error: "api: kategori yok" };
@@ -84,24 +101,112 @@ async function startWatching() {
     lastStatus: "starting",
     lastError: null,
     pollCount: 0,
-    watchStartedAt: Date.now()
+    watchStartedAt: Date.now(),
+    loggedOut: false
   });
   await chrome.alarms.clear(ALARM_NAME);
+  await chrome.alarms.clear(HEARTBEAT_ALARM);
   await chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_MINUTES });
+  await chrome.alarms.create(HEARTBEAT_ALARM, { periodInMinutes: HEARTBEAT_MINUTES });
   pollNow();
+  heartbeat();
 }
 
 async function stopWatching() {
   await setSettings({ watching: false, lastStatus: "stopped" });
   await chrome.alarms.clear(ALARM_NAME);
+  await chrome.alarms.clear(HEARTBEAT_ALARM);
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) {
     const jitter = Math.floor(Math.random() * 5000);
     setTimeout(pollNow, jitter);
+  } else if (alarm.name === HEARTBEAT_ALARM) {
+    heartbeat();
   }
 });
+
+async function heartbeat() {
+  const s = await getSettings();
+  if (!s.watching) return;
+  const results = [];
+  try {
+    const r = await fetch("https://www.passo.com.tr/en/", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      redirect: "follow"
+    });
+    results.push("home:" + r.status);
+    if (r.status === 401 || r.status === 403) {
+      await handleLogout("heartbeat home " + r.status);
+      return;
+    }
+  } catch (e) { results.push("home:err"); }
+
+  if (s.userRequest && s.userRequest.url) {
+    try {
+      let url = s.userRequest.url;
+      if (url.startsWith("//")) url = "https:" + url;
+      else if (url.startsWith("/")) url = "https://www.passo.com.tr" + url;
+      const headers = { ...(s.userRequest.headers || {}) };
+      delete headers["content-length"];
+      delete headers["Content-Length"];
+      const r = await fetch(url, {
+        method: s.userRequest.method || "GET",
+        headers,
+        credentials: "include",
+        cache: "no-store",
+        redirect: "follow"
+      });
+      results.push("user:" + r.status);
+      if (r.status === 401 || r.status === 403) {
+        await handleLogout("heartbeat user " + r.status);
+        return;
+      }
+      if (r.url && /login|signin|uye-girisi/i.test(r.url)) {
+        await handleLogout("heartbeat user → login");
+        return;
+      }
+    } catch (e) { results.push("user:err"); }
+  }
+
+  await setSettings({
+    lastHeartbeat: Date.now(),
+    heartbeatStatus: results.join(" "),
+    loggedOut: false
+  });
+  console.log("[passo-avci] heartbeat", results.join(" "));
+}
+
+async function handleLogout(reason) {
+  console.warn("[passo-avci] LOGOUT detected:", reason);
+  await setSettings({
+    loggedOut: true,
+    lastStatus: "🚨 LOGOUT — yeniden login ol!",
+    lastError: reason
+  });
+  try {
+    await chrome.action.setBadgeText({ text: "OUT" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#b86e00" });
+  } catch (_) {}
+  for (let i = 0; i < 3; i++) {
+    try {
+      await chrome.notifications.create("passo-logout-" + Date.now() + "-" + i, {
+        type: "basic",
+        iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Z0qXf8AAAAASUVORK5CYII=",
+        title: "🚨 PASSO LOGOUT OLDUN!",
+        message: "Yeniden login ol ve 'İzlemeyi Başlat' bas, yoksa bilet kaçar!",
+        priority: 2,
+        requireInteraction: true
+      });
+    } catch (_) {}
+    await new Promise(r => setTimeout(r, 2500));
+  }
+  await ensureOffscreen();
+  await chrome.runtime.sendMessage({ type: "PLAY_ALARM" }).catch(() => {});
+}
 
 async function findPassoTab(eventUrl) {
   const tabs = await chrome.tabs.query({ url: "*://*.passo.com.tr/*" });
@@ -128,6 +233,10 @@ async function pollNow() {
 
   if (s.capturedRequest && s.capturedRequest.url) {
     const r = await checkViaBackgroundApi(s.capturedRequest, s.category, s.price);
+    if (r.loggedOut) {
+      await handleLogout("poll " + (r.error || ""));
+      return;
+    }
     if (r.ok) {
       if (r.available) {
         const needed = s.autoBuy ? (s.autoBuyQuantity || 2) : 1;
@@ -294,6 +403,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     else if (msg.type === "ENDPOINT_FOUND") {
       if (msg.req && msg.req.url) {
         await setSettings({ capturedRequest: msg.req });
+      }
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "AUX_ENDPOINT_FOUND") {
+      if (msg.req && msg.req.url) {
+        if (msg.kind === "user") await setSettings({ userRequest: msg.req });
+        else if (msg.kind === "token") await setSettings({ tokenRequest: msg.req });
       }
       sendResponse({ ok: true });
     }

@@ -22,6 +22,9 @@
     if (d.type === "ENDPOINT_FOUND" && d.req && d.req.url) {
       chrome.runtime.sendMessage({ type: "ENDPOINT_FOUND", req: d.req }).catch(() => {});
     }
+    if (d.type === "AUX_ENDPOINT_FOUND" && d.req && d.req.url && d.kind) {
+      chrome.runtime.sendMessage({ type: "AUX_ENDPOINT_FOUND", kind: d.kind, req: d.req }).catch(() => {});
+    }
   });
 
   function normalize(str) {
