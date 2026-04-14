@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Passo Bilet Avcısı",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Passo maç sayfasındaki bir kategoride yer açıldığında anında uyarı verir.",
   "permissions": ["alarms", "notifications", "storage", "scripting", "tabs", "offscreen"],
   "host_permissions": ["https://*.passo.com.tr/*"],
