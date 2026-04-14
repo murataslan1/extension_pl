@@ -10,7 +10,9 @@ const DEFAULT_SETTINGS = {
   lastCheck: null,
   lastStatus: "idle",
   lastError: null,
-  capturedRequest: null
+  capturedRequest: null,
+  pollCount: 0,
+  watchStartedAt: null
 };
 
 function normalize(str) {
@@ -73,7 +75,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 async function startWatching() {
-  await setSettings({ watching: true, lastStatus: "starting", lastError: null });
+  await setSettings({
+    watching: true,
+    lastStatus: "starting",
+    lastError: null,
+    pollCount: 0,
+    watchStartedAt: Date.now()
+  });
   await chrome.alarms.clear(ALARM_NAME);
   await chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_MINUTES });
   pollNow();
@@ -111,6 +119,8 @@ async function pollNow() {
   const s = await getSettings();
   if (!s.watching) return;
   const now = Date.now();
+  await setSettings({ pollCount: (s.pollCount || 0) + 1 });
+  console.log("[passo-avci] poll #" + ((s.pollCount || 0) + 1) + " at " + new Date(now).toLocaleTimeString());
 
   if (s.capturedRequest && s.capturedRequest.url) {
     const r = await checkViaBackgroundApi(s.capturedRequest, s.category, s.price);

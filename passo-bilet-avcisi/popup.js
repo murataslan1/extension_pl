@@ -11,6 +11,15 @@ async function loadState() {
 function renderStatus(s) {
   const last = s.lastCheck ? new Date(s.lastCheck).toLocaleTimeString() : "henüz yok";
   const watching = s.watching ? "🟢 İZLENİYOR" : "⚪ durdu";
+  const count = s.pollCount || 0;
+  let elapsed = "";
+  if (s.watchStartedAt) {
+    const secs = Math.floor((Date.now() - s.watchStartedAt) / 1000);
+    const mm = Math.floor(secs / 60);
+    const ss = secs % 60;
+    elapsed = ` · ⏱️ ${mm}:${ss.toString().padStart(2, "0")}`;
+  }
+  const counterLine = `<br>✓ ${count} kontrol yapıldı${elapsed}`;
   let statusLine = s.lastStatus || "—";
   let cls = "";
   if (statusLine === "AVAILABLE") { cls = "ok"; statusLine = "🎉 BİLET BULUNDU!"; }
@@ -21,7 +30,7 @@ function renderStatus(s) {
     ? `<br><span class="ok">API yakalandı: ${s.capturedRequest.method} ${s.capturedRequest.url.slice(0, 45)}…</span>`
     : `<br><span class="warn">API henüz yakalanmadı — maç sayfasını bir kere ziyaret edin</span>`;
   $("status").innerHTML = `
-    <b>${watching}</b><br>
+    <b>${watching}</b>${counterLine}<br>
     Son kontrol: ${last}<br>
     Durum: <span class="${cls}">${statusLine}</span>
     ${err}
