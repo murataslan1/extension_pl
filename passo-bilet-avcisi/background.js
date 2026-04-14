@@ -12,7 +12,11 @@ const DEFAULT_SETTINGS = {
   lastError: null,
   capturedRequest: null,
   pollCount: 0,
-  watchStartedAt: null
+  watchStartedAt: null,
+  autoBuy: false,
+  autoBuyQuantity: 2,
+  autoBuyState: "IDLE",
+  autoBuyLog: ""
 };
 
 function normalize(str) {
@@ -48,12 +52,12 @@ async function checkViaBackgroundApi(req, category, price) {
     const win = n.slice(Math.max(0, idx - 400), idx + 600);
     if (!win.includes(priceN)) return { ok: false, error: "api: fiyat eşleşmedi" };
     const mPos = win.match(/"(availableseatcount|available|stock|remaining|count|seatcount)"\s*:\s*([1-9]\d*)/);
-    if (mPos) return { ok: true, available: true, mode: "api" };
+    if (mPos) return { ok: true, available: true, seatCount: parseInt(mPos[2], 10), mode: "api" };
     const mZero = win.match(/"(availableseatcount|available|stock|remaining|count|seatcount)"\s*:\s*0\b/);
-    if (mZero) return { ok: true, available: false, mode: "api" };
+    if (mZero) return { ok: true, available: false, seatCount: 0, mode: "api" };
     const markers = ["no tickets available", "bilet bulunmamaktadir", "sold out", "tukendi"];
-    for (const m of markers) if (win.includes(m)) return { ok: true, available: false, mode: "api" };
-    return { ok: true, available: true, mode: "api-guess" };
+    for (const m of markers) if (win.includes(m)) return { ok: true, available: false, seatCount: 0, mode: "api" };
+    return { ok: true, available: true, seatCount: 99, mode: "api-guess" };
   } catch (e) {
     return { ok: false, error: "api ex: " + (e.message || e) };
   }
@@ -126,9 +130,31 @@ async function pollNow() {
     const r = await checkViaBackgroundApi(s.capturedRequest, s.category, s.price);
     if (r.ok) {
       if (r.available) {
-        await setSettings({ lastCheck: now, lastStatus: "AVAILABLE", lastError: null });
+        const needed = s.autoBuy ? (s.autoBuyQuantity || 2) : 1;
+        const got = r.seatCount || 0;
         const tab = await findPassoTab(s.eventUrl);
-        await triggerAlert(s, tab || {});
+        if (s.autoBuy && got >= needed) {
+          await setSettings({
+            lastCheck: now,
+            lastStatus: `AVAILABLE (${got} koltuk) — autoBuy başlıyor`,
+            lastError: null,
+            autoBuyState: "TRIGGERED"
+          });
+          await triggerAlert(s, tab || {});
+          if (tab) {
+            try { await chrome.tabs.sendMessage(tab.id, { type: "START_AUTOBUY" }); } catch (_) {}
+          }
+        } else if (s.autoBuy && got < needed) {
+          await setSettings({
+            lastCheck: now,
+            lastStatus: `partial-stock (${got}/${needed}) — autoBuy BEKLİYOR`,
+            lastError: "Yetersiz koltuk, autoBuy tetiklenmedi"
+          });
+          await triggerAlert(s, tab || {});
+        } else {
+          await setSettings({ lastCheck: now, lastStatus: `AVAILABLE (${got} koltuk)`, lastError: null });
+          await triggerAlert(s, tab || {});
+        }
         await stopWatching();
         return;
       } else {
@@ -273,6 +299,60 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     else if (msg.type === "POLL_NOW") {
       await pollNow();
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "SIMULATE_TRIGGER") {
+      const s = await getSettings();
+      await setSettings({
+        autoBuyState: "TRIGGERED",
+        lastStatus: "SIMULATE — autoBuy tetiklendi",
+        autoBuyLog: "SIMULATE başlatıldı"
+      });
+      const tab = await findPassoTab(s.eventUrl);
+      if (tab) {
+        try { await chrome.tabs.sendMessage(tab.id, { type: "START_AUTOBUY" }); } catch (_) {}
+        await chrome.tabs.update(tab.id, { active: true });
+      }
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "AUTOBUY_LOG") {
+      const s = await getSettings();
+      const line = `[${new Date().toLocaleTimeString()}] ${msg.message}`;
+      const log = (s.autoBuyLog || "").split("\n").slice(-8).join("\n") + "\n" + line;
+      await setSettings({ autoBuyLog: log.trim(), autoBuyState: msg.state || s.autoBuyState });
+      console.log("[passo-avci autobuy]", line);
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "AT_PAYMENT_SCREEN") {
+      const s = await getSettings();
+      await setSettings({ autoBuyState: "AT_PAYMENT", lastStatus: "💳 ÖDEME EKRANI — kartı onayla!" });
+      await ensureOffscreen();
+      await chrome.runtime.sendMessage({ type: "PLAY_ALARM" }).catch(() => {});
+      for (let i = 0; i < 3; i++) {
+        try {
+          await chrome.notifications.create("passo-pay-" + Date.now() + "-" + i, {
+            type: "basic",
+            iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Z0qXf8AAAAASUVORK5CYII=",
+            title: "💳 ÖDEME EKRANI HAZIR!",
+            message: "Kartı seç, CVV gir, SMS kodunu onayla!",
+            priority: 2,
+            requireInteraction: true
+          });
+        } catch (_) {}
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "AUTOBUY_ERROR") {
+      await setSettings({
+        autoBuyState: "ERROR",
+        lastError: "autoBuy: " + msg.error,
+        lastStatus: "autoBuy ERROR"
+      });
+      sendResponse({ ok: true });
+    }
+    else if (msg.type === "RESET_AUTOBUY") {
+      await setSettings({ autoBuyState: "IDLE", autoBuyLog: "" });
       sendResponse({ ok: true });
     }
   })();

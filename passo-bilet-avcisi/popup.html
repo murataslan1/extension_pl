@@ -34,9 +34,12 @@
   <input type="text" id="price" />
 
   <div class="checkbox">
-    <input type="checkbox" id="autoBuy" disabled>
-    <label for="autoBuy" style="font-weight:400;margin:0">Otomatik satın al (v0.2 — yakında)</label>
+    <input type="checkbox" id="autoBuy">
+    <label for="autoBuy" style="font-weight:400;margin:0">🤖 Otomatik satın al (sepete + ödeme ekranına kadar)</label>
   </div>
+
+  <label>Bilet adedi</label>
+  <input type="number" id="autoBuyQuantity" min="1" max="5" value="2">
 
   <div class="row">
     <button id="startBtn" class="primary">İzlemeyi Başlat</button>
@@ -50,6 +53,13 @@
 
   <div class="row">
     <button id="pollNowBtn" class="ghost">⟳ Şimdi Kontrol Et</button>
+  </div>
+
+  <div class="row">
+    <button id="simulateBtn" class="ghost" style="background:#ffe">🧪 SIMULATE (autoBuy'ı test et)</button>
+  </div>
+  <div class="row">
+    <button id="resetAutoBuyBtn" class="ghost">↺ autoBuy sıfırla</button>
   </div>
 
   <div class="status" id="status">yükleniyor...</div>

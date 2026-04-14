@@ -28,7 +28,10 @@
       "Bash(gh release:*)",
       "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['passo-bilet-avcisi/background.js','passo-bilet-avcisi/popup.js']\\){new Function\\(fs.readFileSync\\(f,'utf8'\\)\\);}console.log\\('ok'\\)\")",
       "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.1.4.zip passo-bilet-avcisi)",
-      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.1.4: poll sayacı + geçen süre göstergesi\")"
+      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.1.4: poll sayacı + geçen süre göstergesi\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['passo-bilet-avcisi/background.js','passo-bilet-avcisi/content.js','passo-bilet-avcisi/inject.js','passo-bilet-avcisi/popup.js','passo-bilet-avcisi/offscreen.js']\\){try{new Function\\(fs.readFileSync\\(f,'utf8'\\)\\);console.log\\('OK',f\\)}catch\\(e\\){console.log\\('ERR',f,e.message\\);process.exit\\(1\\)}};JSON.parse\\(fs.readFileSync\\('passo-bilet-avcisi/manifest.json','utf8'\\)\\);console.log\\('manifest OK'\\)\")",
+      "Bash(zip -qr /tmp/passo-bilet-avcisi-v0.2.0.zip passo-bilet-avcisi)",
+      "Bash(git -c user.email=murataslan1@users.noreply.github.com -c user.name=murataslan1 commit -q -m \"v0.2.0: autoBuy - state machine, 2 bilet, son ana kadar otomasyon\")"
     ]
   }
 }
